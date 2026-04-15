@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { auth } from "@/auth";
 
-export default function HomePage(): React.ReactElement {
+export default async function HomePage(): Promise<React.ReactElement> {
+  const session = await auth();
+
   return (
     <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-4 py-20">
       <div
@@ -19,22 +22,41 @@ export default function HomePage(): React.ReactElement {
           Rágalmazás-bingó
         </h1>
         <p className="mb-10 text-lg leading-relaxed text-zinc-400">
-          Öt malac egy sorban? Itt öt sor narratíva. Véletlen 5×5 kártya a kampánybeszédből ismert
-          sablonokból – pipálhatod, oszthatod, bővítheted adminban.
+          Regisztrálj, lépj be, és töltsd a saját 5×5 kártyádat – a pipák a fiókodhoz tartoznak, nem
+          csak ehhez a böngészőhöz. A mezőket továbbra is bővítheted adminban.
         </p>
         <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <Link
-            href="/jatek"
-            className="inline-flex min-w-[200px] items-center justify-center rounded-2xl bg-gradient-to-r from-orange-500 to-rose-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-orange-900/30 transition hover:brightness-110 active:scale-[0.98]"
-          >
-            Bingó indítása
-          </Link>
-          <Link
-            href="/admin/bejelentkezes"
-            className="inline-flex min-w-[200px] items-center justify-center rounded-2xl border border-zinc-600 bg-zinc-900/50 px-8 py-3.5 text-base font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800/50"
-          >
-            Admin
-          </Link>
+          {session ? (
+            <Link
+              href="/jatek"
+              className="inline-flex min-w-[200px] items-center justify-center rounded-2xl bg-gradient-to-r from-orange-500 to-rose-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-orange-900/30 transition hover:brightness-110 active:scale-[0.98]"
+            >
+              Bingó megnyitása
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/regisztracio"
+                className="inline-flex min-w-[200px] items-center justify-center rounded-2xl bg-gradient-to-r from-orange-500 to-rose-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-orange-900/30 transition hover:brightness-110 active:scale-[0.98]"
+              >
+                Regisztráció
+              </Link>
+              <Link
+                href="/bejelentkezes"
+                className="inline-flex min-w-[200px] items-center justify-center rounded-2xl border border-zinc-600 bg-zinc-900/50 px-8 py-3.5 text-base font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800/50"
+              >
+                Belépés
+              </Link>
+            </>
+          )}
+          {session?.user.role === "ADMIN" ? (
+            <Link
+              href="/admin"
+              className="inline-flex min-w-[200px] items-center justify-center rounded-2xl border border-zinc-600 bg-zinc-900/50 px-8 py-3.5 text-base font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800/50"
+            >
+              Admin
+            </Link>
+          ) : null}
         </div>
       </div>
     </main>

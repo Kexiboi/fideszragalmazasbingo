@@ -10,12 +10,18 @@ async function main(): Promise<void> {
   const passwordHash = await bcrypt.hash(adminPassword, 12);
 
   const existingAdmin = await prisma.user.findUnique({ where: { email: adminEmail } });
-  if (!existingAdmin) {
+  if (existingAdmin) {
+    await prisma.user.update({
+      where: { id: existingAdmin.id },
+      data: { role: "ADMIN" },
+    });
+  } else {
     await prisma.user.create({
       data: {
         email: adminEmail,
         passwordHash,
         name: "Admin",
+        role: "ADMIN",
       },
     });
   }
@@ -27,6 +33,7 @@ async function main(): Promise<void> {
         text,
         sortOrder,
         active: true,
+        reviewStatus: "APPROVED",
       })),
     });
   }
