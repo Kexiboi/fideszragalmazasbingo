@@ -11,6 +11,9 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
+    "docker:build": "docker compose build web",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
     "postinstall": "prisma generate"
   },
   "prisma": {

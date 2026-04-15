@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fidesz rágalmazás bingo
 
-## Getting Started
+Next.js + Postgres + NextAuth. A játék a közös, admin által jóváhagyott mezőkből épít véletlen 5×5 kiosztásokat.
 
-First, run the development server:
+## Docker (egy parancs)
+
+A repo gyökerében:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker compose up -d --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ez elindítja a Postgres 16-ot és a Next alkalmazást. Első (és minden új séma) indításkor a `web` konténer lefuttatja a `prisma migrate deploy`-ot és a seedet, majd elindítja a szervert.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Kód változott a gépeden?** A konténerbe beépített build kerül; frissítéshez **mindig** futtasd újra a fenti parancsot (`--build`). A sima `docker compose up -d` önmagában nem másolja be az új TS/React kódot — ezért nem érzed „ráfrissítésre” a változást.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Alkalmazás:** [http://localhost:3000](http://localhost:3000)
+- **Adatbázis (hostról):** `localhost:5432`, felhasználó / jelszó / DB: `postgres` / `postgres` / `bingo`
 
-## Learn More
+**Admin belépés (alapértelmezett env a compose-ban):** `ADMIN_EMAIL` / `ADMIN_PASSWORD` — éles előtt állítsd `.env`-ben vagy a compose `environment` részében. Érdemes a `.env.example` alapján létrehozni egy `.env` fájlt (legalább `AUTH_SECRET`).
 
-To learn more about Next.js, take a look at the following resources:
+**Leállítás:** `docker compose down` — adat megmarad a `pgdata` köteten. **Minden törlése:** `docker compose down -v`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**NPM scriptek:** `npm run docker:up` / `npm run docker:down` / `npm run docker:build` ugyanez, röviden.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Fejlesztés (Node helyben)
 
-## Deploy on Vercel
+1. Postgres fusson (pl. ugyanez a compose csak a `db` szolgáltatással, vagy saját instance).
+2. `DATABASE_URL` a `.env`-ben (lásd `.env.example`).
+3. `npm ci` → `npx prisma migrate dev` → `npm run dev`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## További
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- API és szerepkörök: `AGENTS.md` / projekt fájlok.
+- `docker-compose.yml` és `Dockerfile` a gyökérben; a `web` image a build során futtatja a production buildet.

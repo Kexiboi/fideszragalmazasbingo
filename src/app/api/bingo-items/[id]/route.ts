@@ -4,10 +4,17 @@ import { prisma } from "@/lib/db";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
+function isAdminSession(role: string | undefined): boolean {
+  return role === "ADMIN";
+}
+
 export async function PATCH(request: Request, { params }: RouteParams): Promise<NextResponse> {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Nincs bejelentkezve." }, { status: 401 });
+  }
+  if (!isAdminSession(session.user.role)) {
+    return NextResponse.json({ error: "Csak admin módosíthat." }, { status: 403 });
   }
 
   const { id } = await params;
@@ -27,9 +34,15 @@ export async function PATCH(request: Request, { params }: RouteParams): Promise<
     text?: unknown;
     active?: unknown;
     sortOrder?: unknown;
+    reviewStatus?: unknown;
   };
 
-  const data: { text?: string; active?: boolean; sortOrder?: number } = {};
+  const data: {
+    text?: string;
+    active?: boolean;
+    sortOrder?: number;
+    reviewStatus?: "PENDING" | "APPROVED";
+  } = {};
 
   if ("text" in b) {
     if (typeof b.text !== "string" || b.text.trim().length === 0) {
@@ -49,6 +62,15 @@ export async function PATCH(request: Request, { params }: RouteParams): Promise<
     }
     data.sortOrder = Math.round(b.sortOrder);
   }
+  if ("reviewStatus" in b) {
+    if (b.reviewStatus !== "PENDING" && b.reviewStatus !== "APPROVED") {
+      return NextResponse.json({ error: "Érvénytelen reviewStatus." }, { status: 400 });
+    }
+    data.reviewStatus = b.reviewStatus;
+    if (b.reviewStatus === "APPROVED") {
+      data.active = true;
+    }
+  }
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Nincs módosítandó mező." }, { status: 400 });
@@ -58,9 +80,25 @@ export async function PATCH(request: Request, { params }: RouteParams): Promise<
     const item = await prisma.bingoItem.update({
       where: { id },
       data,
-      select: { id: true, text: true, active: true, sortOrder: true },
+      select: {
+        id: true,
+        text: true,
+        active: true,
+        sortOrder: true,
+        reviewStatus: true,
+        submittedBy: { select: { email: true } },
+      },
     });
-    return NextResponse.json({ item });
+    return NextResponse.json({
+      item: {
+        id: item.id,
+        text: item.text,
+        active: item.active,
+        sortOrder: item.sortOrder,
+        reviewStatus: item.reviewStatus,
+        submittedByEmail: item.submittedBy?.email ?? null,
+      },
+    });
   } catch {
     return NextResponse.json({ error: "Elem nem található." }, { status: 404 });
   }
@@ -70,6 +108,9 @@ export async function DELETE(_request: Request, { params }: RouteParams): Promis
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Nincs bejelentkezve." }, { status: 401 });
+  }
+  if (!isAdminSession(session.user.role)) {
+    return NextResponse.json({ error: "Csak admin törölhet." }, { status: 403 });
   }
 
   const { id } = await params;

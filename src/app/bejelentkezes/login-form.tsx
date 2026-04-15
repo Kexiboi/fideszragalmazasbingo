@@ -1,11 +1,22 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+
+function safeCallback(raw: string | null): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
+    return "/jatek";
+  }
+  return raw;
+}
 
 export function LoginForm(): React.ReactElement {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = safeCallback(searchParams.get("callbackUrl"));
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +36,7 @@ export function LoginForm(): React.ReactElement {
         setError("Hibás email vagy jelszó.");
         return;
       }
-      router.push("/admin");
+      router.push(callbackUrl);
       router.refresh();
     } finally {
       setPending(false);
@@ -39,7 +50,13 @@ export function LoginForm(): React.ReactElement {
       }}
       className="mx-auto flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-8 shadow-xl"
     >
-      <h1 className="text-xl font-semibold text-white">Admin bejelentkezés</h1>
+      <h1 className="text-xl font-semibold text-white">Belépés</h1>
+      <p className="text-sm text-zinc-500">
+        A bingóhoz regisztráció szükséges.{" "}
+        <Link href="/regisztracio" className="text-orange-400 hover:underline">
+          Fiók létrehozása
+        </Link>
+      </p>
       <label className="flex flex-col gap-1 text-sm text-zinc-400">
         Email
         <input

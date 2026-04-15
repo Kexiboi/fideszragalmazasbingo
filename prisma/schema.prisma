@@ -7,21 +7,81 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum BingoItemReviewStatus {
+  PENDING
+  APPROVED
+}
+
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String?
-  createdAt    DateTime @default(now())
+  id                       String                 @id @default(cuid())
+  email                    String                 @unique
+  passwordHash             String
+  name                     String?
+  role                     UserRole               @default(USER)
+  createdAt                DateTime               @default(now())
+  activeBingoCardId        String?                @unique
+  activeBingoCard          BingoCard?             @relation("ActiveBingoCard", fields: [activeBingoCardId], references: [id], onDelete: SetNull)
+  bingoCards               BingoCard[]            @relation("UserBingoCards")
+  submittedBingoItems      BingoItem[]            @relation("BingoItemSubmitter")
+  submittedLayoutTemplates BingoLayoutTemplate[]  @relation("LayoutTemplateSubmitter")
+}
+
+model BingoCard {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation("UserBingoCards", fields: [userId], references: [id], onDelete: Cascade)
+  activeForUser User?     @relation("ActiveBingoCard")
+  title         String?
+  isFavorite    Boolean   @default(false)
+  /// Elmentett kiosztás: megosztási link csak ezután kérhető
+  layoutCommittedAt DateTime?
+  /// Nyilvános megosztási link (/megosztva/[token]); csak kérésre generáljuk
+  shareToken    String?   @unique
+  cellIds       String[]
+  markedIndices Int[]     @default([])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId, isFavorite, updatedAt])
+  @@index([userId, createdAt])
+}
+
+/// Teljes 5×5 kártya-javaslat (25 mező); jóváhagyás után kiosztható mint „minta”
+model BingoLayoutTemplate {
+  id                  String                  @id @default(cuid())
+  title               String
+  reviewStatus        BingoItemReviewStatus   @default(PENDING)
+  submittedByUserId   String?
+  submittedBy         User?                   @relation("LayoutTemplateSubmitter", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  /// PENDING: 25 szöveg JSON tömb; jóváhagyás után null, cellIds töltve
+  proposedTexts       Json?
+  /// 25 db BingoItem id (active=false, nem a közös pool része)
+  cellIds             String[]                @default([])
+  /// Admin: szerepeljen a „véletlen minta” kiosztások között
+  activeInRandomDeal  Boolean                 @default(false)
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  @@index([reviewStatus, createdAt])
+  @@index([submittedByUserId])
 }
 
 model BingoItem {
-  id        String   @id @default(cuid())
-  text      String
-  sortOrder Int      @default(0)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String                  @id @default(cuid())
+  text               String
+  sortOrder          Int                     @default(0)
+  active             Boolean                 @default(true)
+  reviewStatus       BingoItemReviewStatus   @default(APPROVED)
+  submittedByUserId  String?
+  submittedBy        User?                   @relation("BingoItemSubmitter", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
 
-  @@index([active, sortOrder])
+  @@index([active, reviewStatus, sortOrder])
+  @@index([reviewStatus, createdAt])
 }

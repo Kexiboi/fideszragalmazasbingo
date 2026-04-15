@@ -1,8 +1,9 @@
+import type { Session, User } from "next-auth";
+import type { JWT } from "next-auth/jwt";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/db";
 
+// @ts-expect-error -- next-auth@5: a default export bundler alatt nem mindig „callable” típusú (toolchain).
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
   providers: [
@@ -13,42 +14,38 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Jelszó", type: "password" },
       },
       authorize: async (credentials) => {
-        const email = credentials?.email;
-        const password = credentials?.password;
-        if (!email || !password || typeof email !== "string" || typeof password !== "string") {
-          return null;
-        }
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user) {
-          return null;
-        }
-        const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) {
-          return null;
-        }
-        return { id: user.id, email: user.email, name: user.name ?? undefined };
+        const { authorizeCredentials } = await import("@/lib/auth-credentials");
+        return authorizeCredentials(
+          credentials as Record<"email" | "password", string> | undefined,
+        );
       },
     }),
   ],
   session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 7 },
   pages: {
-    signIn: "/admin/bejelentkezes",
+    signIn: "/bejelentkezes",
   },
   callbacks: {
-    jwt: async ({ token, user }) => {
+    jwt: async ({ token, user }: { token: JWT; user?: User | null }) => {
       if (user?.id) {
         token.sub = user.id;
       }
       if (user?.email) {
         token.email = user.email;
       }
+      if (user && "role" in user && typeof user.role === "string") {
+        token.role = user.role;
+      }
       return token;
     },
-    session: async ({ session, token }) => {
+    session: async ({ session, token }: { session: Session; token: JWT }) => {
       if (session.user) {
         session.user.id = token.sub ?? "";
         if (token.email) {
           session.user.email = token.email as string;
+        }
+        if (token.role === "USER" || token.role === "ADMIN") {
+          session.user.role = token.role;
         }
       }
       return session;
